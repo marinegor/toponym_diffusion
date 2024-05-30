@@ -151,8 +151,12 @@ class TokenDenoiser(nn.Module):
             )
         )
 
-    def forward(self, x: T["b", "n_tokens"]) -> T["b", "n_tokens", "d_embed"]:  # noqa: F821
-        te = self.te(x)
+    def forward(
+        self,
+        x: T["b", "n_tokens"],  # noqa: F821
+        t: T["b"],  # noqa: F821
+    ) -> T["b", "n_tokens", "d_embed"]:  # noqa: F821
+        te = self.te(t).unsqueeze(1).repeat(1, x.shape[1], 1)
         pe = self.pe(x)
         xe = te + pe
-        return self.blocks(xe).swapaxes(-1, -2)
+        return self.blocks(xe)  # .swapaxes(-1, -2)
