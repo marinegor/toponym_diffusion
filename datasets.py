@@ -24,8 +24,15 @@ class GeonamesDataset:
     timezone          : the iana timezone id (see file timeZone.txt) varchar(40)
     modification date : date of last modification in yyyy-MM-dd format""")
 
-    def __init__(self, path: str, max_len: int = 6, min_len: int = 15):
+    def __init__(
+        self,
+        path: str,
+        min_len: int = 6,
+        max_len: int = 15,
+    ):
         self.path = path
+        self.min_len = min_len
+        self.max_len = max_len
         self._colnames = list(
             map(lambda s: s.split(":")[0].strip(), self._annotation.split("\n"))
         )

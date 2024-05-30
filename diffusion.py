@@ -29,7 +29,7 @@ class Scheduler:
         self.beta_T = beta_T
 
         # we need:
-        #  - "noise power" betas
+        #  - "noise power" aka variance -- betas
         #  - alphas = 1-betas
         #  - alpha_bars = cumprod(alphas)
 
@@ -151,3 +151,6 @@ class ForwardDiffusionProcess:
         std: SequenceBatch = torch.randn_like(x_0) * (1 - alpha_bar_t)
 
         return mean + std
+
+
+class BackwardDiffusionProcess: ...
