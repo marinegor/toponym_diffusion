@@ -1,5 +1,6 @@
 from torchtyping import TensorType
 import torch
+from torch import nn
 
 SequenceBatch = TensorType["batch", "channels", "L", torch.float]
 Timestamps = TensorType["batch", torch.long]
@@ -152,5 +153,27 @@ class ForwardDiffusionProcess:
 
         return mean + std
 
+    def sample(self, model: nn.Module, n: int, max_T: int):
+        model.eval()
+        with torch.no_grad():
+            noise_probs = torch.randint(
+                low=0, high=model.alphabet_size, size=(n, model.n_tokens)
+            ).float()
 
-class BackwardDiffusionProcess: ...
+            for t in reversed(range(max_T)):
+                t = (torch.ones(n) * t).long()
+                x = predicted_probs = model(noise_probs, t)
+
+                alpha = self.scheduler.get_alphas(t).reshape(-1, 1, 1)
+                alphabar = self.scheduler.get_alphabar(t).reshape(-1, 1, 1)
+                beta = self.scheduler.get_betas(t).reshape(-1, 1, 1)
+                noise = torch.randn_like(x)
+
+                x = (
+                    1
+                    / torch.sqrt(alpha)
+                    * (x - ((1 - alpha) / (torch.sqrt(1 - alphabar))) * x)
+                    + torch.sqrt(beta) * noise
+                )
+
+        return predicted_probs

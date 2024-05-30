@@ -1,3 +1,5 @@
 torch
 polars
 torchtyping
+numpy
+tqdm
