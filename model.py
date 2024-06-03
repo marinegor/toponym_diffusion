@@ -75,7 +75,7 @@ class PositionalEncoding(nn.Module):
         return pe
 
 
-class SelfAttention(nn.Module):
+class SelfAttentionBlock(nn.Module):
     def __init__(self, d_in: int, d_out_kq: int, d_out_v: int):
         super().__init__()
 
@@ -87,7 +87,7 @@ class SelfAttention(nn.Module):
         self.K: T["d_in", "d_out_kq"] = nn.Parameter(torch.rand(d_in, d_out_kq))
         self.V: T["d_in", "d_out_v"] = nn.Parameter(torch.rand(d_in, d_out_v))
 
-        self.norm = nn.LayerNorm(d_in)
+        self.norm = nn.LayerNorm(d_out_v)
 
     def forward(
         self,
@@ -106,7 +106,7 @@ class SelfAttention(nn.Module):
         )
 
         context_vec: T["batch", "n", "d_out_v"] = attn_weights @ values  # noqa: F821
-        return context_vec
+        return self.norm(context_vec)
 
 
 class TokenDenoiser(nn.Module):
@@ -131,7 +131,7 @@ class TokenDenoiser(nn.Module):
         )
         self.blocks = nn.Sequential(
             *[
-                SelfAttention(
+                SelfAttentionBlock(
                     d_in=d_embed,
                     d_out_kq=d_kq,
                     d_out_v=d_hidden,
