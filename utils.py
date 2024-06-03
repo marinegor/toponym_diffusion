@@ -14,16 +14,20 @@ class Tokenizer:
         start_token: str = "<",
         end_token: str = ">",
         pad_token: str = ".",
+        mask_token: str = "#",
     ):
-        assert len(start_token) == len(end_token) == len(pad_token) == 1
+        assert (
+            len(start_token) == len(end_token) == len(pad_token) == len(mask_token) == 1
+        )
         assert not any((t in alphabet for t in (start_token, end_token, pad_token)))
         assert isinstance(alphabet, str), f"{type(alphabet)=}"
-        alphabet = f"{start_token}{end_token}{pad_token}{alphabet}"
+        alphabet = f"{mask_token}{start_token}{end_token}{pad_token}{alphabet}"
 
         self.alphabet = sorted(list(alphabet))
         self.start_token = start_token
         self.end_token = end_token
         self.pad_token = pad_token
+        self.mask_token = mask_token
         self.max_len = max_len
         self._stoi = {char: idx for idx, char in enumerate(alphabet)}
         self._itos = {idx: char for idx, char in enumerate(alphabet)}
@@ -56,7 +60,7 @@ class Tokenizer:
                 .str.pad_end(self.max_len, self.pad_token)  # pad string to max length
                 .alias("tokenized")
                 .str.split(by="")
-                .list.eval(pl.element().replace(self.stoi, return_dtype=pl.UInt8)), 
+                .list.eval(pl.element().replace(self.stoi, return_dtype=pl.UInt8)),
             )
             .get_column("tokenized")
             .cast(pl.Array(pl.UInt8, self.max_len))

@@ -71,7 +71,8 @@ class PositionalEncoding(nn.Module):
             and 'd' is size of each token's embeding
         """
 
-        pe: T["b", "d"] = self.pe[x]  # noqa: F821
+        # pe: T["b", "d"] = self.pe[x]  # noqa: F821
+        pe: T["b", "d"] = self.pe[:, : x.size(1)]  # noqa: F821
         return pe
 
 
