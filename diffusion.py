@@ -1,9 +1,11 @@
 from torchtyping import TensorType
 import torch
 from torch import nn
+from utils import Tokenizer
 
 SequenceBatch = TensorType["batch", "channels", "L", torch.float]
 Timestamps = TensorType["batch", torch.long]
+T = TensorType
 
 
 class Scheduler:

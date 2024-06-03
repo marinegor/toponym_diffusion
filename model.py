@@ -41,6 +41,41 @@ def positional_embeding_matrix(
     return pe
 
 
+class TimeEncoding(nn.Module):
+    """Add positional embedings to the input"""
+
+    def __init__(self, d_embed: int, max_T: int):
+        """Initialize the layer and register a `self.te` buffer
+
+        Parameters
+        ----------
+        d_embed : int
+            length of the time vector for each timepoint; second dim of `self.te`
+        max_T : int
+            maximal time allowed by the layer; first dim of `self.te`
+        """
+        super().__init__()
+        self.max_T = max_T
+        self.d_embed = d_embed
+
+        te = positional_embeding_matrix(position_id=max_T, d_out=d_embed)
+        self.register_buffer("te", te)
+
+    def forward(self, t: T["b", "l"]) -> T["b", "l", "d"]:  # noqa: F821
+        """Add positional embeding to the input
+
+        Returns
+        -------
+        torch.Tensor
+            shape (batch, l, d) where 'l' is number of tokens in each sequence,
+            and 'd' is size of each token's embeding
+        """
+
+        # pe: T["b", "d"] = self.pe[x]  # noqa: F821
+        te: T["b", "d", "l"] = self.te[t]  # noqa: F821
+        return te
+
+
 class PositionalEncoding(nn.Module):
     """Add positional embedings to the input"""
 
@@ -72,7 +107,7 @@ class PositionalEncoding(nn.Module):
         """
 
         # pe: T["b", "d"] = self.pe[x]  # noqa: F821
-        pe: T["b", "d"] = self.pe[:, : x.size(1)]  # noqa: F821
+        pe: T["b", "d"] = self.pe[: x.size(1)]  # noqa: F821
         return pe
 
 
