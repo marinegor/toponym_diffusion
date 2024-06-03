@@ -130,13 +130,26 @@ class TokenDenoiser(nn.Module):
             d_embed=d_embed,
         )
         self.blocks = nn.Sequential(
+            # *[
+            # SelfAttentionBlock(
+            # d_in=d_embed,
+            # d_out_kq=d_kq,
+            # d_out_v=d_hidden,
+            # )
+            # ],
+            *[
+                nn.Linear(
+                    d_embed,
+                    d_hidden,
+                )
+            ],
             *[
                 SelfAttentionBlock(
-                    d_in=d_embed,
+                    d_in=d_hidden,
                     d_out_kq=d_kq,
                     d_out_v=d_hidden,
                 )
-                for _ in range(n_blocks)
+                for _ in range(n_blocks - 1)
             ],
             *[
                 nn.Linear(d_hidden, max_L),
@@ -150,6 +163,53 @@ class TokenDenoiser(nn.Module):
         t: T["b"],  # noqa: F821
     ) -> T["b", "l", "n_tokens"]:  # noqa: F821
         te: T["b", 1, "d_embed"] = self.te(t).unsqueeze(1)  # noqa: F821
-        pe: T["b", "l", "d_embed"] = self.pe(x)  # noqa: F821
+        pe: T["b", "max_L", "d_embed"] = self.pe(x)  # noqa: F821
+        xe = te + pe
+        return self.blocks(xe)  # .swapaxes(-1, -2)
+
+
+class NewTokenDenoiser(nn.Module):
+    def __init__(
+        self,
+        max_T: int,
+        max_L: int,
+        d_embed: int,
+        d_hidden: int,
+        n_blocks: int = 3,
+    ):
+        super().__init__()
+
+        self.te = PositionalEncoding(
+            max_L=max_T,
+            d_embed=d_embed,
+        )
+        self.pe = PositionalEncoding(
+            max_L=max_L,
+            d_embed=d_embed,
+        )
+        self.blocks = nn.Sequential(
+            *(
+                [
+                    nn.TransformerEncoderLayer(
+                        d_model=d_embed, nhead=1, dim_feedforward=d_hidden
+                    )
+                ]
+                + [
+                    nn.TransformerEncoderLayer(
+                        d_model=d_hidden, nhead=4, dim_feedforward=d_hidden
+                    )
+                    for _ in range(n_blocks)
+                ]
+                + [nn.Linear(d_hidden, max_L), nn.ReLU()]
+            )
+        )
+
+    def forward(
+        self,
+        x: T["b", "l"],  # noqa: F821
+        t: T["b"],  # noqa: F821
+    ) -> T["b", "l", "n_tokens"]:  # noqa: F821
+        te: T["b", 1, "d_embed"] = self.te(t).unsqueeze(1)  # noqa: F821
+        pe: T["b", "max_L", "d_embed"] = self.pe(x)  # noqa: F821
         xe = te + pe
         return self.blocks(xe)  # .swapaxes(-1, -2)
