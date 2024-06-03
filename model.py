@@ -54,13 +54,14 @@ class PositionalEncoding(nn.Module):
         max_L : int
             maximal time allowed by the layer; first dim of `self.te`
         """
+        super().__init__()
         self.max_L = max_L
         self.d_embed = d_embed
 
         pe = positional_embeding_matrix(position_id=max_L, d_out=d_embed)
         self.register_buffer("pe", pe)
 
-    def forward(self, x: T["b", "l", "d"], t: T["b"]) -> T["b", "l", "d"]:  # noqa: F821
+    def forward(self, x: T["b", "l", "d"]) -> T["b", "l", "d"]:  # noqa: F821
         """Add positional embeding to the input
 
         Returns
@@ -69,44 +70,9 @@ class PositionalEncoding(nn.Module):
             shape (batch, l, d) where 'l' is number of tokens in each sequence,
             and 'd' is size of each token's embeding
         """
-        assert x.shape[-1] == self.d_embed
 
-        pe: T["b", "d"] = self.pe[t]  # noqa: F821
-        return x + pe.unsqueeze(1)
-
-
-class AddTime(nn.Module):
-    """Add time embedings to the input"""
-
-    def __init__(self, d_embed: int, max_T: int):
-        """Initialize the layer and register a `self.te` buffer
-
-        Parameters
-        ----------
-        d_embed : int
-            length of the time vector for each timepoint; second dim of `self.te`
-        max_T : int
-            maximal time allowed by the layer; first dim of `self.te`
-        """
-        self.max_T = max_T
-        self.d_embed = d_embed
-
-        te = positional_embeding_matrix(position_id=max_T, d_out=d_embed)
-        self.register_buffer("te", te)
-
-    def forward(self, x: T["b", "l", "d"], t: T["b"]) -> T["b", "l", "d"]:  # noqa: F821
-        """Add time embeding to the input
-
-        Returns
-        -------
-        torch.Tensor
-            shape (batch, l, d) where 'l' is number of tokens in each sequence,
-            and 'd' is size of each token's embeding
-        """
-        assert x.shape[-1] == self.d_embed
-
-        te: T["b", "d"] = self.te[t]  # noqa: F821
-        return x + te.unsqueeze(1)
+        pe: T["b", "d"] = self.pe[x]  # noqa: F821
+        return pe
 
 
 class SelfAttention(nn.Module):
@@ -143,27 +109,11 @@ class SelfAttention(nn.Module):
         return context_vec
 
 
-class SelfAttentionWithTime(nn.Module):
-    def __init__(self, d_in: int, d_out_kq: int, d_out_v: int, max_T: int):
-        super().__init__()
-        self.sa = SelfAttention(d_in=d_in, d_out_kq=d_out_kq, d_out_v=d_out_v)
-        self.te = AddTime(d_embed=d_out_v, max_T=max_T)
-
-    def forward(
-        self,
-        x: TensorType["batch", "l", "self.d_in"],  # noqa: F821
-        t: TensorType["batch",],  # noqa: F821
-    ) -> T["batch", "l", "self.d_out_v"]:  # noqa: F821
-        xte: T["batch", "l", "self.d_out_v"] = self.te(x, t)  # noqa: F821
-        return self.sa(xte)
-
-
 class TokenDenoiser(nn.Module):
     def __init__(
         self,
         max_T: int,
         max_L: int,
-        n_tokens: int,
         d_embed: int,
         d_kq: int,
         d_hidden: int,
@@ -172,20 +122,26 @@ class TokenDenoiser(nn.Module):
         super().__init__()
 
         self.te = PositionalEncoding(
-            max_position=max_T,
+            max_L=max_T,
             d_embed=d_embed,
         )
         self.pe = PositionalEncoding(
-            max_position=max_L,
+            max_L=max_L,
             d_embed=d_embed,
         )
         self.blocks = nn.Sequential(
             *[
-                SelfAttentionWithTime(
-                    d_in=d_embed, d_out_kq=d_kq, d_out_v=d_hidden, max_T=max_T
+                SelfAttention(
+                    d_in=d_embed,
+                    d_out_kq=d_kq,
+                    d_out_v=d_hidden,
                 )
                 for _ in range(n_blocks)
-            ]
+            ],
+            *[
+                nn.Linear(d_hidden, max_L),
+                nn.ReLU(),
+            ],
         )
 
     def forward(
