@@ -91,7 +91,7 @@ class DownsampleBlock(nn.Module):
         self.d_in = d_in
         stride = 2
         d_out = self.d_out = d_in // stride
-        padding = stride + kernel_size - 1
+        padding = 2 * stride + kernel_size + 1
         self.layer = nn.Sequential(
             nn.Conv1d(
                 in_channels=d_in,
@@ -144,6 +144,29 @@ class ConvText(nn.Module):
         x = x.swapaxes(-1, -2)
         ds1 = self.ds1(x)
         ds2 = self.ds2(ds1)
-        us1 = self.us1(ds2) + ds1
+        us1 = self.us1(ds2)  #  + ds1
         us2 = self.us2(us1)
         return us2.swapaxes(-1, -2)
+
+
+class MLPText(nn.Module):
+    def __init__(self, d_embed: int = 1024, dropout: float = 0.1):
+        super().__init__()
+        self.d_embed = d_embed
+        d_hidden = d_embed // 4
+
+        self.nn = nn.Sequential(
+            nn.Linear(in_features=d_embed, out_features=d_hidden),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.LayerNorm(d_hidden),
+            nn.Linear(in_features=d_hidden, out_features=d_hidden),
+            nn.ReLU(),
+            nn.Dropout(dropout),
+            nn.LayerNorm(d_hidden),
+            nn.Linear(in_features=d_hidden, out_features=d_embed),
+            nn.ReLU(),
+        )
+
+    def forward(self, x):
+        return self.nn(x)

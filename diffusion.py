@@ -2,7 +2,8 @@ from torchtyping import TensorType
 import torch
 from torch import nn
 
-SequenceBatch = TensorType["batch", "channels", "L", torch.float]
+SequenceBatch = TensorType["batch", "len_sentence", torch.long]
+SequenceEmbedding = TensorType["batch", "len_sequence", "d_embeding", torch.float]
 Timestamps = TensorType["batch", torch.long]
 
 
