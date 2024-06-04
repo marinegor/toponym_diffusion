@@ -1,10 +1,12 @@
 from torchtyping import TensorType
 import torch
 from torch import nn
+from utils import Tokenizer
 
 SequenceBatch = TensorType["batch", "len_sentence", torch.long]
 SequenceEmbedding = TensorType["batch", "len_sequence", "d_embeding", torch.float]
 Timestamps = TensorType["batch", torch.long]
+T = TensorType
 
 
 class Scheduler:
